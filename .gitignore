@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Databases (contain real club data)
+db/*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

@@ -1,0 +1,14 @@
+[Unit]
+Description=Euler Discord bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/euler-bot
+ExecStart=/home/pi/euler-bot/.venv/bin/python -m main
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
