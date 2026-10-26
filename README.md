@@ -23,8 +23,11 @@ Officer-only commands are gated on the officer role.
 | `/contest roster <contest_id> [category]` | Officer | See who signed up, grouped by subcontest |
 | `/roles` | Officer | Post or refresh the event notification reaction-role panel |
 | `/clock` | Officer | Compare the bot host clock with Discord time |
+| `/man` | Anyone | Show the member manual; officers receive the officer manual by DM |
 
-Only `/contest signup` is available to non-officers. Everything else is officer-only.
+Only `/contest signup` and `/man` are available to non-officers. Everything else is officer-only.
+
+`/man` sends non-officers the contest signup and reminder guide as an ephemeral message. Officers receive the full officer manual by DM, with an ephemeral fallback if DMs are closed.
 
 For `/contest signup`, set each category to `True` to add it or `False` to remove it. Omit categories you don't want to change. Signups are rejected after the contest's deadline. For example:
 
@@ -171,6 +174,7 @@ euler/
     reminders.py           background meeting/contest reminder loop
     self_roles.py          /roles reaction-role panel
     diagnostics.py         /clock host-clock check
+    manual.py              /man member and officer manuals
     dev.py                 /dev test commands (only loaded in dev mode)
 tests/
   __init__.py

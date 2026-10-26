@@ -6,7 +6,14 @@ import discord
 from euler import config
 from euler.bot_instance import client, tree
 from euler.db import database
-from euler.features import contests, diagnostics, meetings, reminders, self_roles  # noqa: F401
+from euler.features import (  # noqa: F401
+    contests,
+    diagnostics,
+    manual,
+    meetings,
+    reminders,
+    self_roles,
+)
 
 if config.DEV_MODE:
     from euler.features import dev  # noqa: F401
