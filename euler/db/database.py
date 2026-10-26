@@ -1,9 +1,11 @@
-from datetime import datetime, timedelta
+import os
+from datetime import timedelta
 
 import aiosqlite
 
 from euler import config
 from euler.constants import CATEGORIES
+from euler.utils import local_now_iso, local_now_naive
 
 _CATEGORY_VALUES = ", ".join(f"'{category}'" for category in CATEGORIES)
 
@@ -52,7 +54,21 @@ async def _ensure_signups_schema(db):
     await db.commit()
 
 
+async def _ensure_contests_schema(db):
+    """Add columns introduced after the original contests table."""
+    cursor = await db.execute("PRAGMA table_info(contests)")
+    columns = {column[1] for column in await cursor.fetchall()}
+    if "signup_deadline" not in columns:
+        await db.execute("ALTER TABLE contests ADD COLUMN signup_deadline TEXT")
+    if "reminded" not in columns:
+        await db.execute(
+            "ALTER TABLE contests ADD COLUMN reminded INTEGER DEFAULT 0"
+        )
+
+
 async def init_db(path=config.DB_PROD):
+    parent = os.path.dirname(os.path.abspath(path))
+    os.makedirs(parent, exist_ok=True)
     async with aiosqlite.connect(path) as db:
         await db.execute(f"""
             CREATE TABLE IF NOT EXISTS meetings (
@@ -68,9 +84,12 @@ async def init_db(path=config.DB_PROD):
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
                 contest_date TEXT,
-                location TEXT
+                location TEXT,
+                signup_deadline TEXT,
+                reminded INTEGER DEFAULT 0
             )
         """)
+        await _ensure_contests_schema(db)
         await _ensure_signups_schema(db)
         await db.execute("""
             CREATE TABLE IF NOT EXISTS role_panels (
@@ -126,13 +145,14 @@ async def delete_meeting(meeting_id, path=config.DB_PROD):
 
 async def get_due_meetings(lead_minutes, path=config.DB_PROD):
     """Not-yet-reminded meetings starting within the next `lead_minutes`."""
-    now = datetime.now()
+    now = local_now_naive()
     start = now.isoformat(timespec="seconds")
     end = (now + timedelta(minutes=lead_minutes)).isoformat(timespec="seconds")
     async with aiosqlite.connect(path) as db:
         cursor = await db.execute(
             "SELECT id, category, start_time, location FROM meetings "
-            "WHERE reminded = 0 AND start_time > ? AND start_time <= ?",
+            "WHERE reminded = 0 AND start_time > ? AND start_time <= ? "
+            "ORDER BY start_time",
             (start, end),
         )
         return await cursor.fetchall()
@@ -144,40 +164,88 @@ async def mark_reminded(meeting_id, path=config.DB_PROD):
         await db.commit()
 
 
-async def create_contest(name, contest_date, location, path=config.DB_PROD):
+async def create_contest(
+    name, contest_date, location, signup_deadline=None, path=config.DB_PROD
+):
     async with aiosqlite.connect(path) as db:
         cursor = await db.execute(
-            "INSERT INTO contests (name, contest_date, location) VALUES (?, ?, ?)",
-            (name, contest_date, location),
+            "INSERT INTO contests (name, contest_date, location, signup_deadline) "
+            "VALUES (?, ?, ?, ?)",
+            (name, contest_date, location, signup_deadline),
         )
         await db.commit()
         return cursor.lastrowid
 
 
 async def get_contest(contest_id, path=config.DB_PROD):
-    """Row: (id, name, contest_date, location), or None if it doesn't exist."""
+    """Row: (id, name, contest_date, location, signup_deadline, reminded)."""
     async with aiosqlite.connect(path) as db:
         cursor = await db.execute(
-            "SELECT id, name, contest_date, location FROM contests WHERE id = ?",
+            "SELECT id, name, contest_date, location, signup_deadline, reminded "
+            "FROM contests WHERE id = ?",
             (contest_id,),
         )
         return await cursor.fetchone()
 
 
+async def delete_contest(contest_id, path=config.DB_PROD):
+    """Delete a contest and all of its signups. Returns contests deleted (0 or 1)."""
+    async with aiosqlite.connect(path) as db:
+        await db.execute("DELETE FROM signups WHERE contest_id = ?", (contest_id,))
+        cursor = await db.execute("DELETE FROM contests WHERE id = ?", (contest_id,))
+        await db.commit()
+        return cursor.rowcount
+
+
 async def list_contests(path=config.DB_PROD):
-    """Rows: (id, name, contest_date, location, signup_count).
+    """Rows: (id, name, contest_date, location, signup_deadline, signup_count).
 
     signup_count is the number of subcontest entries, so one person signed up
     for two categories counts twice.
     """
     async with aiosqlite.connect(path) as db:
         cursor = await db.execute("""
-            SELECT c.id, c.name, c.contest_date, c.location, COUNT(s.user_id)
+            SELECT c.id, c.name, c.contest_date, c.location, c.signup_deadline,
+                   COUNT(s.user_id)
             FROM contests c LEFT JOIN signups s ON s.contest_id = c.id
             GROUP BY c.id
             ORDER BY c.contest_date
         """)
         return await cursor.fetchall()
+
+
+async def update_contest_deadline(contest_id, deadline, path=config.DB_PROD):
+    """Set or clear (deadline=None) a contest's signup deadline."""
+    async with aiosqlite.connect(path) as db:
+        cursor = await db.execute(
+            "UPDATE contests SET signup_deadline = ? WHERE id = ?",
+            (deadline, contest_id),
+        )
+        await db.commit()
+        return cursor.rowcount
+
+
+async def get_due_contests(lead_minutes, path=config.DB_PROD):
+    """Not-yet-reminded contests starting within the next `lead_minutes`."""
+    now = local_now_naive()
+    start = now.isoformat(timespec="seconds")
+    end = (now + timedelta(minutes=lead_minutes)).isoformat(timespec="seconds")
+    async with aiosqlite.connect(path) as db:
+        cursor = await db.execute(
+            "SELECT id, name, contest_date, location FROM contests "
+            "WHERE reminded = 0 AND contest_date > ? AND contest_date <= ? "
+            "ORDER BY contest_date",
+            (start, end),
+        )
+        return await cursor.fetchall()
+
+
+async def mark_contest_reminded(contest_id, path=config.DB_PROD):
+    async with aiosqlite.connect(path) as db:
+        await db.execute(
+            "UPDATE contests SET reminded = 1 WHERE id = ?", (contest_id,)
+        )
+        await db.commit()
 
 
 async def get_contest_signup_counts(path=config.DB_PROD):
@@ -191,13 +259,18 @@ async def get_contest_signup_counts(path=config.DB_PROD):
 
 
 async def signup_contest(contest_id, user_id, category, path=config.DB_PROD):
-    """Returns 'ok', 'no_contest', 'already', or 'bad_category'."""
+    """Returns 'ok', 'no_contest', 'already', 'closed', or 'bad_category'."""
     if category not in CATEGORIES:
         return "bad_category"
     async with aiosqlite.connect(path) as db:
-        cursor = await db.execute("SELECT 1 FROM contests WHERE id = ?", (contest_id,))
-        if await cursor.fetchone() is None:
+        cursor = await db.execute(
+            "SELECT signup_deadline FROM contests WHERE id = ?", (contest_id,)
+        )
+        row = await cursor.fetchone()
+        if row is None:
             return "no_contest"
+        if row[0] is not None and local_now_iso() >= row[0]:
+            return "closed"
         try:
             await db.execute(
                 "INSERT INTO signups (contest_id, user_id, category) VALUES (?, ?, ?)",
@@ -207,6 +280,50 @@ async def signup_contest(contest_id, user_id, category, path=config.DB_PROD):
         except aiosqlite.IntegrityError:
             return "already"
         return "ok"
+
+
+async def update_contest_signups(
+    contest_id, user_id, selections, path=config.DB_PROD
+):
+    """Apply a member's category choices in one transaction.
+
+    `selections` maps category -> bool. True signs up, False withdraws, and
+    categories not present are left unchanged. Returns 'no_contest',
+    'bad_category', 'closed', or a list of ('added'|'removed', category) changes.
+    """
+    if any(category not in CATEGORIES for category in selections):
+        return "bad_category"
+
+    async with aiosqlite.connect(path) as db:
+        cursor = await db.execute(
+            "SELECT signup_deadline FROM contests WHERE id = ?", (contest_id,)
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return "no_contest"
+        if row[0] is not None and local_now_iso() >= row[0]:
+            return "closed"
+
+        changes = []
+        for category, wanted in selections.items():
+            if wanted:
+                cursor = await db.execute(
+                    "INSERT OR IGNORE INTO signups (contest_id, user_id, category) "
+                    "VALUES (?, ?, ?)",
+                    (contest_id, user_id, category),
+                )
+                if cursor.rowcount:
+                    changes.append(("added", category))
+            else:
+                cursor = await db.execute(
+                    "DELETE FROM signups "
+                    "WHERE contest_id = ? AND user_id = ? AND category = ?",
+                    (contest_id, user_id, category),
+                )
+                if cursor.rowcount:
+                    changes.append(("removed", category))
+        await db.commit()
+        return changes
 
 
 async def withdraw_contest(contest_id, user_id, category=None, path=config.DB_PROD):
