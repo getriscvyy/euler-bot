@@ -29,14 +29,15 @@ async def main():
     assert await database.delete_meeting(mid, T) == 1
     assert await database.delete_meeting(mid, T) == 0
 
-    # reminders
-    soon = (local_now_naive() + timedelta(minutes=30)).isoformat(
+    # reminders: meetings use a short lead window (10 minutes by default)
+    soon = (local_now_naive() + timedelta(minutes=5)).isoformat(
         timespec="seconds"
     )
     mid = await database.add_meeting("General Science", soon, "T-20", T)
-    assert len(await database.get_due_meetings(60, T)) == 1
+    assert len(await database.get_due_meetings(4, T)) == 0
+    assert len(await database.get_due_meetings(10, T)) == 1
     await database.mark_reminded(mid, T)
-    assert len(await database.get_due_meetings(60, T)) == 0
+    assert len(await database.get_due_meetings(10, T)) == 0
 
     # contests: one category entry per signup, multiple categories per user
     contest_start = (local_now_naive() + timedelta(days=30)).isoformat(
@@ -154,7 +155,7 @@ async def main():
         deadline_cid, 444, "Number Sense", T
     ) == "ok"
 
-    # contest reminders use the same one-hour lead window as meetings
+    # contest reminders use the contest lead window (60 minutes by default)
     reminder_start = (local_now_naive() + timedelta(minutes=30)).isoformat(
         timespec="seconds"
     )

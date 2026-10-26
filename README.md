@@ -1,6 +1,6 @@
 # euler
 
-A Discord bot for Elkins Math and Science. It schedules meetings and contests, sends reminders before they start, and handles contest signups.
+A Discord bot for Elkins Math and Science. It schedules meetings and contests, announces new events, sends reminders before they start, and handles contest signups.
 
 Built with Python, [discord.py](https://discordpy.readthedocs.io/), and SQLite (via `aiosqlite`). Slash commands only.
 
@@ -10,22 +10,23 @@ Officer-only commands are gated on the officer role.
 
 | Command | Who | What it does |
 |---|---|---|
-| `/meeting add <category> <start_time> <location>` | Officer | Schedule a meeting |
+| `/meeting add <category> <start_time> <location>` | Officer | Schedule a meeting and announce it |
 | `/meeting list` | Officer | Show all meetings with their `#id` |
 | `/meeting move <meeting_id> <new_start_time>` | Officer | Reschedule a meeting (re-arms its reminder) |
 | `/meeting remove <meeting_id>` | Officer | Delete a meeting |
-| `/contest create <name> <contest_date> <location> [signup_deadline]` | Officer | Create a contest, optionally with a signup deadline |
+| `/contest create <name> <contest_date> <location> [signup_deadline]` | Officer | Create a contest, open signups, and announce it |
 | `/contest remove <contest_id>` | Officer | Delete a contest and all its signups |
 | `/contest list` | Officer | Show contests, deadlines, and per-subcontest signup counts |
 | `/contest deadline <contest_id> <deadline>` | Officer | Set a signup deadline, or use `clear` to remove it |
 | `/contest signup <contest_id> [number_sense] [general_mathematics] [calculator_applications] [general_science]` | Anyone | Add or remove yourself from any combination of subcontests in one command |
 | `/contest withdraw <contest_id> <user> [category]` | Officer | Withdraw someone from one or all subcontests |
 | `/contest roster <contest_id> [category]` | Officer | See who signed up, grouped by subcontest |
-| `/roles` | Officer | Post or refresh the event notification reaction-role panel |
+| `/roles` | Officer | Post or refresh the reaction-role panel in the reaction-roles channel |
 | `/clock` | Officer | Compare the bot host clock with Discord time |
 | `/man` | Anyone | Show the member manual; officers receive the officer manual by DM |
+| `/about` | Anyone | Show bot information and credits |
 
-Only `/contest signup` and `/man` are available to non-officers. Everything else is officer-only.
+Only `/contest signup`, `/man`, and `/about` are available to non-officers. Everything else is officer-only.
 
 `/man` sends non-officers the contest signup and reminder guide as an ephemeral message. Officers receive the full officer manual by DM, with an ephemeral fallback if DMs are closed.
 
@@ -41,9 +42,16 @@ Meeting categories and contest subcontest categories are the same: Number Sense,
 
 All times are entered and displayed in the club timezone, `America/Chicago`. Times are typed as `YYYY-MM-DD HH:MM` (24-hour), e.g. `2026-09-15 15:30`. The server's own timezone does not matter. Use `/clock` if you need to check the host clock.
 
+## Announcements
+
+When an officer creates a meeting or contest, the bot immediately posts an announcement in `ANNOUNCEMENTS_CHANNEL_ID`:
+
+- Meeting announcements ping the role for that meeting's category.
+- Contest announcements ping all configured category roles, include the signup command (and deadline when set), and open signups immediately.
+
 ## Reminders
 
-A background loop checks every minute for meetings and contests starting within the next hour that haven't been reminded yet. It posts reminders in the reminder channel:
+A background loop checks every minute. Meeting reminders post **10 minutes** before a meeting; contest reminders post **60 minutes** before a contest. Both post in the reminder channel:
 
 - Meeting reminders mention only the role for that meeting's category.
 - Contest reminders mention only the category roles that have at least one signup.
@@ -80,12 +88,13 @@ Fill in `.env` (turn on Developer Mode in Discord settings to get the **Copy ID*
 | `GUILD_ID` | Your server's ID |
 | `OFFICER_ROLE_ID` | Role allowed to run officer commands |
 | `REMINDER_CHANNEL_ID` | Channel where meeting and contest reminders are posted |
-| `ANNOUNCEMENTS_CHANNEL_ID` | Channel where `/roles` posts the reaction-role panel |
+| `ANNOUNCEMENTS_CHANNEL_ID` | Channel where new meetings/contests are announced with role pings |
+| `REACTION_ROLES_CHANNEL_ID` | Dedicated channel where `/roles` posts the reaction-role panel |
 | `TIMEZONE` | Club timezone, default `America/Chicago` |
-| `NUMBER_SENSE_ROLE_ID` | Existing role pinged for Number Sense reminders |
-| `GENERAL_MATHEMATICS_ROLE_ID` | Existing role pinged for General Mathematics reminders |
-| `CALCULATOR_APPLICATIONS_ROLE_ID` | Existing role pinged for Calculator Applications reminders |
-| `GENERAL_SCIENCE_ROLE_ID` | Existing role pinged for General Science reminders |
+| `NUMBER_SENSE_ROLE_ID` | Existing role pinged for Number Sense announcements/reminders |
+| `GENERAL_MATHEMATICS_ROLE_ID` | Existing role pinged for General Mathematics announcements/reminders |
+| `CALCULATOR_APPLICATIONS_ROLE_ID` | Existing role pinged for Calculator Applications announcements/reminders |
+| `GENERAL_SCIENCE_ROLE_ID` | Existing role pinged for General Science announcements/reminders |
 
 Optional settings:
 
@@ -94,14 +103,16 @@ Optional settings:
 | `EULER_DB_PATH` | Use a different SQLite file, e.g. `db/dev.sql` |
 | `DEV_MODE` | Enables the `/dev` test commands. Requires a separate `EULER_DB_PATH` |
 | `EULER_ENV_FILE` | Shell-only override for the env file, e.g. `.env.dev` |
+| `MEETING_REMINDER_LEAD_MINUTES` | Minutes before a meeting to remind, default `10` |
+| `CONTEST_REMINDER_LEAD_MINUTES` | Minutes before a contest to remind, default `60` |
 
 The real `.env` file lives in the project root and is intentionally ignored by Git. Only `.env.example` (placeholders) is committed. Never commit a bot token or a filled-in `.env`.
 
-Set a category role ID to `0` to skip that category’s role ping/panel entry. The roles must be mentionable, or the bot needs the **Mention @everyone, @here and All Roles** permission.
+Set a category role ID to `0` to skip that category’s announcement/reminder ping and panel entry. The roles must be mentionable, or the bot needs the **Mention @everyone, @here and All Roles** permission.
 
 ### 3. Reaction roles
 
-Run `/roles` in Discord as an officer. The bot posts a panel in `ANNOUNCEMENTS_CHANNEL_ID` with one reaction per configured category. Members react to receive that event role and remove their reaction to drop it.
+Run `/roles` in Discord as an officer. The bot posts a panel in `REACTION_ROLES_CHANNEL_ID` with one reaction per configured category. This is separate from the announcements channel, so event announcements don't bury the panel. Members react to receive that event role and remove their reaction to drop it.
 
 The bot needs **Manage Roles**, and its highest role must be above every event role it assigns.
 
@@ -144,8 +155,8 @@ Dev commands (officer-only, registered only in dev mode):
 |---|---|
 | `/dev status` | Show the active DB path and timezone |
 | `/dev dm` | Send the invoking officer a test DM |
-| `/dev contest` | Create a test contest starting in 30 minutes |
-| `/dev meeting` | Create a test meeting starting in 30 minutes |
+| `/dev contest` | Create a test contest in the contest reminder window |
+| `/dev meeting` | Create a test meeting in the meeting reminder window |
 | `/dev reminders` | Run the reminder checks immediately |
 
 Do not run the dev instance with the same token as the production bot at the same time; Discord only allows one active gateway session per bot token.
@@ -161,6 +172,7 @@ euler/
   config.py                env vars and constants
   constants.py             shared event categories and emojis
   auth.py                  is_officer() / require_officer(): permission logic
+  announcements.py         creation announcements and category role pings
   db/
     __init__.py
     database.py            all SQL; the only file that knows SQLite exists
@@ -175,6 +187,7 @@ euler/
     self_roles.py          /roles reaction-role panel
     diagnostics.py         /clock host-clock check
     manual.py              /man member and officer manuals
+    about.py               /about bot information and credits
     dev.py                 /dev test commands (only loaded in dev mode)
 tests/
   __init__.py

@@ -3,6 +3,7 @@ from typing import Optional
 import discord
 from discord import app_commands
 
+from euler import announcements
 from euler.auth import require_officer
 from euler.bot_instance import tree
 from euler.constants import CATEGORIES, Category
@@ -52,15 +53,25 @@ async def contest_create(
             )
             return
 
+    await interaction.response.defer()
     contest_id = await database.create_contest(
         name, iso, location, signup_deadline=deadline_iso
+    )
+    announced = await announcements.send_contest_announcement(
+        contest_id, name, iso, location, signup_deadline=deadline_iso
     )
     deadline_note = (
         f" Signups close {signup_deadline}." if signup_deadline else ""
     )
-    await interaction.response.send_message(
+    announcement_note = (
+        ""
+        if announced
+        else " Could not post the announcement; check ANNOUNCEMENTS_CHANNEL_ID "
+        "and permissions."
+    )
+    await interaction.followup.send(
         f"Created contest `#{contest_id}`: **{name}** on {contest_date} at "
-        f"{location}.{deadline_note}"
+        f"{location}.{deadline_note}{announcement_note}"
     )
 
 

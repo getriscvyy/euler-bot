@@ -3,6 +3,7 @@ import sqlite3
 import discord
 from discord import app_commands
 
+from euler import announcements
 from euler.auth import require_officer
 from euler.bot_instance import tree
 from euler.constants import Category
@@ -35,14 +36,25 @@ async def meeting_add(
         )
         return
 
+    await interaction.response.defer()
     try:
         meeting_id = await database.add_meeting(category, iso, location)
     except sqlite3.IntegrityError:   # CHECK constraint backstop
-        await interaction.response.send_message("Invalid category.", ephemeral=True)
+        await interaction.followup.send("Invalid category.", ephemeral=True)
         return
 
-    await interaction.response.send_message(
-        f"Added meeting `#{meeting_id}`: **{category}** on {start_time} at {location}."
+    announced = await announcements.send_meeting_announcement(
+        category, iso, location
+    )
+    announcement_note = (
+        ""
+        if announced
+        else " Could not post the announcement; check ANNOUNCEMENTS_CHANNEL_ID "
+        "and permissions."
+    )
+    await interaction.followup.send(
+        f"Added meeting `#{meeting_id}`: **{category}** on {start_time} at "
+        f"{location}.{announcement_note}"
     )
 
 

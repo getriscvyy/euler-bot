@@ -52,10 +52,10 @@ async def roles_panel(interaction: discord.Interaction):
         return
 
     guild = interaction.guild
-    channel = guild.get_channel(config.ANNOUNCEMENTS_CHANNEL_ID)
+    channel = guild.get_channel(config.REACTION_ROLES_CHANNEL_ID)
     if channel is None or not hasattr(channel, "send"):
         await interaction.response.send_message(
-            "Announcements channel not found. Check ANNOUNCEMENTS_CHANNEL_ID.",
+            "Reaction roles channel not found. Check REACTION_ROLES_CHANNEL_ID.",
             ephemeral=True,
         )
         return

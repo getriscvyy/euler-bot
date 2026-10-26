@@ -21,12 +21,12 @@ Example:
 Signups close at the posted deadline. After that, ask an officer to make a change.
 
 **Roles and reminders**
-React to the `/roles` panel in the announcements channel to receive a category role. Meeting and contest reminders ping only the relevant category roles. Remove your reaction to stop getting them.
+React to the `/roles` panel in the reaction-roles channel to receive a category role. Meeting and contest reminders ping only the relevant category roles. Remove your reaction to stop getting them.
 
 **Times**
 All times are America/Chicago (Central).
 
-Use `/man` anytime for this guide. Ask an officer if you need a contest ID or other help."""
+Use `/man` anytime for this guide and `/about` for bot credits. Officers announce new contests in the announcements channel, and signups open immediately. Ask an officer if you need a contest ID or other help."""
 
 ADMIN_MANUAL = """**Euler — officer manual**
 
@@ -45,16 +45,20 @@ ADMIN_MANUAL = """**Euler — officer manual**
 `/contest withdraw <contest_id> <member> [category]` — remove a signup
 `/contest signup ...` — member self-service; officers can use it too
 
-**Roles, reminders, diagnostics**
-`/roles` — post/refresh the reaction-role panel
+**Roles, announcements, reminders**
+`/roles` — post/refresh the reaction-role panel in the reaction-roles channel
+Creating a meeting/contest announces it in the announcements channel and pings the relevant category role(s). Contest signups open immediately.
+Meeting reminders post 10 minutes before; contest reminders post 60 minutes before. Contest reminders ping only category roles with signups.
+
+**Diagnostics**
 `/clock` — check the host clock against Discord (under 2s is normal)
-Reminders post 60 minutes before a meeting/contest. Contest reminders ping only category roles with signups.
+`/about` — bot credits and source
 
 **Dev/testing**
 With `DEV_MODE=true` and a separate `EULER_DB_PATH`: `/dev status`, `/dev dm`, `/dev contest`, `/dev meeting`, `/dev reminders`.
 
 **Members**
-Non-officers use `/contest signup` and `/man`. They can set category fields to `True`/`False` to join/leave. Signups close at the deadline.
+Non-officers use `/contest signup`, `/man`, and `/about`. They can set category fields to `True`/`False` to join/leave. Signups close at the deadline.
 
 All times are America/Chicago (Central)."""
 

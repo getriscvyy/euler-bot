@@ -57,8 +57,10 @@ async def dev_contest(interaction: discord.Interaction):
         return
 
     now = local_now().replace(second=0, microsecond=0)
-    start = now + timedelta(minutes=30)
-    deadline = now + timedelta(minutes=20)
+    lead = max(2, config.CONTEST_REMINDER_LEAD_MINUTES)
+    start_minutes = min(30, max(2, lead - 5))
+    start = now + timedelta(minutes=start_minutes)
+    deadline = now + timedelta(minutes=max(1, start_minutes - 10))
     name = f"Dev Contest {now.strftime('%H:%M:%S')}"
     contest_id = await database.create_contest(
         name,
@@ -86,7 +88,8 @@ async def dev_meeting(
 
     category = category or "General Mathematics"
     now = local_now().replace(second=0, microsecond=0)
-    start = now + timedelta(minutes=30)
+    minutes = max(1, config.MEETING_REMINDER_LEAD_MINUTES - 2)
+    start = now + timedelta(minutes=minutes)
     meeting_id = await database.add_meeting(
         category, _db_time(start), "Dev Room"
     )

@@ -70,8 +70,12 @@ def _contest_reminder(guild, contest, signup_rows):
 
 async def send_due_reminders():
     """Send all due meeting/contest reminders. Returns (meetings, contests)."""
-    due_meetings = await database.get_due_meetings(config.REMINDER_LEAD_MINUTES)
-    due_contests = await database.get_due_contests(config.REMINDER_LEAD_MINUTES)
+    due_meetings = await database.get_due_meetings(
+        config.MEETING_REMINDER_LEAD_MINUTES
+    )
+    due_contests = await database.get_due_contests(
+        config.CONTEST_REMINDER_LEAD_MINUTES
+    )
     if not due_meetings and not due_contests:
         return 0, 0
 

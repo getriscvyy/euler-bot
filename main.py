@@ -7,6 +7,7 @@ from euler import config
 from euler.bot_instance import client, tree
 from euler.db import database
 from euler.features import (  # noqa: F401
+    about,
     contests,
     diagnostics,
     manual,
