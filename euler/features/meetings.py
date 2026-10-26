@@ -1,24 +1,16 @@
 import sqlite3
-from typing import Literal
 
 import discord
 from discord import app_commands
 
-from auth import is_officer
-from bot_instance import tree
-from db import database
-from utils import parse_time
+from euler.auth import require_officer
+from euler.bot_instance import tree
+from euler.constants import Category
+from euler.db import database
+from euler.utils import parse_time
 
 # One parent group: /meeting add, /meeting list, /meeting move, /meeting remove
 meeting = app_commands.Group(name="meeting", description="Manage club meetings", guild_only=True)
-
-
-async def require_officer(interaction: discord.Interaction):
-    """Sends the rejection itself; returns True if the caller may proceed."""
-    if not is_officer(interaction):
-        await interaction.response.send_message("Officers only.", ephemeral=True)
-        return False
-    return True
 
 
 @meeting.command(name="add", description="Schedule a meeting")
@@ -29,7 +21,7 @@ async def require_officer(interaction: discord.Interaction):
 )
 async def meeting_add(
     interaction: discord.Interaction,
-    category: Literal["Number Sense", "General Mathematics", "Calculator Applications", "General Science"],
+    category: Category,
     start_time: str,
     location: str,
 ):
@@ -56,6 +48,9 @@ async def meeting_add(
 
 @meeting.command(name="list", description="Show scheduled meetings")
 async def meeting_list(interaction: discord.Interaction):
+    if not await require_officer(interaction):
+        return
+
     rows = await database.list_meetings()
     if not rows:
         await interaction.response.send_message("No meetings scheduled.")

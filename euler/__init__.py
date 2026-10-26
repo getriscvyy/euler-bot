@@ -1,0 +1,1 @@
+"""Euler Discord bot package."""

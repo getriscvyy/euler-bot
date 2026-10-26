@@ -1,12 +1,11 @@
 import logging
-import discord
-import config
-from bot_instance import client, tree
-from db import database
 
-import features.meetings
-import features.contests
-from features import reminders
+import discord
+
+from euler import config
+from euler.bot_instance import client, tree
+from euler.db import database
+from euler.features import contests, meetings, reminders, self_roles  # noqa: F401 (register commands)
 
 
 async def setup_hook():
