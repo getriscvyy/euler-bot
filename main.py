@@ -12,6 +12,7 @@ from euler.features import (  # noqa: F401
     diagnostics,
     manual,
     meetings,
+    perms,
     reminders,
     self_roles,
 )

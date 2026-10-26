@@ -6,8 +6,12 @@ from euler.bot_instance import tree
 
 MEMBER_MANUAL = """**Euler — member manual**
 
-**Signing up for contests**
-Officers post contests and their IDs. Sign up with:
+**Finding contests and signing up**
+`/contest list` shows every contest's `#id`, date, location, deadline, and
+current signup counts. Officers also announce new contests in the announcements
+channel.
+
+Sign up with:
 `/contest signup contest_id:<id> number_sense:True general_mathematics:True`
 
 - Set a category to `True` to join it.
@@ -26,7 +30,7 @@ React to the `/roles` panel in the reaction-roles channel to receive a category 
 **Times**
 All times are America/Chicago (Central).
 
-Use `/man` anytime for this guide and `/about` for bot credits. Officers announce new contests in the announcements channel, and signups open immediately. Ask an officer if you need a contest ID or other help."""
+Use `/man` anytime for this guide and `/about` for bot credits. Officers announce new contests in the announcements channel, and signups open immediately. Use `/contest list` if you need a contest ID."""
 
 ADMIN_MANUAL = """**Euler — officer manual**
 
@@ -45,6 +49,14 @@ ADMIN_MANUAL = """**Euler — officer manual**
 `/contest withdraw <contest_id> <member> [category]` — remove a signup
 `/contest signup ...` — member self-service; officers can use it too
 
+**Command permissions**
+`/perms list` — show member access
+`/perms set <command> <members|officers>` — change access
+`/perms reset [command]` — restore defaults
+`/contest list` is member-accessible by default. `/contest signup`, `/man`,
+and `/about` are always public; `/perms` is officer-only. You can also edit
+`permissions.json`.
+
 **Roles, announcements, reminders**
 `/roles` — post/refresh the reaction-role panel in the reaction-roles channel
 Creating a meeting/contest announces it in the announcements channel and pings the relevant category role(s). Contest signups open immediately.
@@ -52,13 +64,12 @@ Meeting reminders post 10 minutes before; contest reminders post 60 minutes befo
 
 **Diagnostics**
 `/clock` — check the host clock against Discord (under 2s is normal)
-`/about` — bot credits and source
 
 **Dev/testing**
 With `DEV_MODE=true` and a separate `EULER_DB_PATH`: `/dev status`, `/dev dm`, `/dev contest`, `/dev meeting`, `/dev reminders`.
 
 **Members**
-Non-officers use `/contest signup`, `/man`, and `/about`. They can set category fields to `True`/`False` to join/leave. Signups close at the deadline.
+Members get `/contest list`, `/contest signup`, `/man`, and `/about` by default; grant more with `/perms`. Signups close at the deadline.
 
 All times are America/Chicago (Central)."""
 

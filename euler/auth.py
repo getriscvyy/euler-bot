@@ -1,4 +1,4 @@
-from euler import config
+from euler import config, permissions
 
 
 def is_officer(interaction) -> bool:
@@ -8,8 +8,14 @@ def is_officer(interaction) -> bool:
 
 
 async def require_officer(interaction) -> bool:
-    """Sends the rejection itself; returns True if the caller may proceed."""
-    if not is_officer(interaction):
-        await interaction.response.send_message("Officers only.", ephemeral=True)
-        return False
-    return True
+    """Allow officers, or members when /perms grants that command access."""
+    if is_officer(interaction):
+        return True
+
+    command = getattr(interaction, "command", None)
+    command_name = getattr(command, "qualified_name", None)
+    if command_name and permissions.is_member_allowed(command_name):
+        return True
+
+    await interaction.response.send_message("Officers only.", ephemeral=True)
+    return False

@@ -10,7 +10,8 @@ from euler.constants import CATEGORIES, Category
 from euler.db import database
 from euler.utils import local_now_iso, parse_time
 
-# /contest create/list/remove/deadline/withdraw/roster (officer), /contest signup (anyone)
+# /contest create/remove/deadline/withdraw/roster are officer-only by default.
+# /contest list is member-accessible by default; /contest signup is always public.
 contest = app_commands.Group(name="contest", description="Contests and signups", guild_only=True)
 
 
@@ -229,7 +230,9 @@ async def contest_signup(
     )
     if result == "no_contest":
         await interaction.response.send_message(
-            f"No contest with id {contest_id}.", ephemeral=True
+            f"No contest with id {contest_id}. Use `/contest list` to see the "
+            "contest IDs.",
+            ephemeral=True,
         )
         return
     if result == "bad_category":

@@ -6,7 +6,7 @@ Built with Python, [discord.py](https://discordpy.readthedocs.io/), and SQLite (
 
 ## Commands
 
-Officer-only commands are gated on the officer role.
+Most commands are officer-only. `/contest list`, `/contest signup`, `/man`, and `/about` are available to members; officers can grant access to other commands with `/perms`.
 
 | Command | Who | What it does |
 |---|---|---|
@@ -16,7 +16,7 @@ Officer-only commands are gated on the officer role.
 | `/meeting remove <meeting_id>` | Officer | Delete a meeting |
 | `/contest create <name> <contest_date> <location> [signup_deadline]` | Officer | Create a contest, open signups, and announce it |
 | `/contest remove <contest_id>` | Officer | Delete a contest and all its signups |
-| `/contest list` | Officer | Show contests, deadlines, and per-subcontest signup counts |
+| `/contest list` | Members | Show contests, deadlines, and per-subcontest signup counts |
 | `/contest deadline <contest_id> <deadline>` | Officer | Set a signup deadline, or use `clear` to remove it |
 | `/contest signup <contest_id> [number_sense] [general_mathematics] [calculator_applications] [general_science]` | Anyone | Add or remove yourself from any combination of subcontests in one command |
 | `/contest withdraw <contest_id> <user> [category]` | Officer | Withdraw someone from one or all subcontests |
@@ -25,8 +25,11 @@ Officer-only commands are gated on the officer role.
 | `/clock` | Officer | Compare the bot host clock with Discord time |
 | `/man` | Anyone | Show the member manual; officers receive the officer manual by DM |
 | `/about` | Anyone | Show bot information and credits |
+| `/perms list` | Officer | Show which commands members can use |
+| `/perms set <command> <members or officers>` | Officer | Grant or revoke member access to a command |
+| `/perms reset [command]` | Officer | Restore default access for one or all commands |
 
-Only `/contest signup`, `/man`, and `/about` are available to non-officers. Everything else is officer-only.
+By default, `/contest list`, `/contest signup`, `/man`, and `/about` are available to non-officers. Everything else is officer-only unless granted with `/perms`. `/perms` itself is always officer-only.
 
 `/man` sends non-officers the contest signup and reminder guide as an ephemeral message. Officers receive the full officer manual by DM, with an ephemeral fallback if DMs are closed.
 
@@ -41,6 +44,24 @@ registers the member for both Number Sense and General Mathematics with one comm
 Meeting categories and contest subcontest categories are the same: Number Sense, General Mathematics, Calculator Applications, General Science. A member can sign up for multiple subcontests within the same contest.
 
 All times are entered and displayed in the club timezone, `America/Chicago`. Times are typed as `YYYY-MM-DD HH:MM` (24-hour), e.g. `2026-09-15 15:30`. The server's own timezone does not matter. Use `/clock` if you need to check the host clock.
+
+## Command permissions
+
+`/contest list` is member-accessible by default so members can find the `#id` they need for `/contest signup`.
+
+Officers can inspect and change access in Discord with `/perms`; changes apply immediately, without restarting the bot. Only member access is configurable: a command is either officer-only or open to everyone.
+
+The same setting lives in `permissions.json` in the project root and can be edited by hand:
+
+```json
+{
+  "member_commands": [
+    "contest list"
+  ]
+}
+```
+
+Only the configurable commands shown by `/perms list` are honored. `/contest signup`, `/man`, and `/about` are always public, and `/perms` is always officer-only, so listing those has no effect. A missing or malformed file falls back to the default allowlist (`contest list`).
 
 ## Announcements
 
@@ -131,10 +152,11 @@ The database file is created automatically on first start.
 
 ## Testing
 
-The database layer has offline tests that need no Discord connection. They use a throwaway `db/test.sql`, recreated on every run:
+The database and permission layers have offline tests that need no Discord connection. The database tests use a throwaway `db/test.sql`, recreated on every run:
 
 ```sh
 python -m tests.test_db
+python -m tests.test_permissions
 ```
 
 ### Testing without touching production data
@@ -168,6 +190,7 @@ Do not run the dev instance with the same token as the production bot at the sam
 ```
 main.py                    entry point: wires everything together, syncs commands, starts the bot
 .env.example               template for local configuration
+permissions.json           member command allowlist (hand-editable; updated by /perms)
 scripts/
   setup_env.py             interactive .env generator
 euler/
@@ -176,6 +199,7 @@ euler/
   config.py                env vars and constants
   constants.py             shared event categories and emojis
   auth.py                  is_officer() / require_officer(): permission logic
+  permissions.py           member command allowlist load/save/reset helpers
   announcements.py         creation announcements and category role pings
   db/
     __init__.py
@@ -192,10 +216,12 @@ euler/
     diagnostics.py         /clock host-clock check
     manual.py              /man member and officer manuals
     about.py               /about bot information and credits
+    perms.py               /perms member-access commands
     dev.py                 /dev test commands (only loaded in dev mode)
 tests/
   __init__.py
   test_db.py               offline database tests
+  test_permissions.py      offline permission and /perms tests
 db/                        SQLite data files (created automatically; not committed)
 euler.service              systemd unit for deployment
 ```
