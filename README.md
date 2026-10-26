@@ -77,10 +77,12 @@ In the [Developer Portal](https://discord.com/developers/applications):
 ### 2. Configuration
 
 ```sh
-cp .env.example .env
+python scripts/setup_env.py
 ```
 
-Fill in `.env` (turn on Developer Mode in Discord settings to get the **Copy ID** options):
+The setup script prompts for the required values, hides the bot token while you type, accepts either raw IDs or channel/role mentions, validates the timezone, and writes `.env` with `600` permissions. If `.env` already exists, it saves a `.env.bak` backup first. Optional settings stay commented out.
+
+To do it manually, copy `.env.example` to `.env` and fill it in. Turn on Developer Mode in Discord settings to get the **Copy ID** options:
 
 | Variable | What it is |
 |---|---|
@@ -140,8 +142,8 @@ python -m tests.test_db
 Create a separate dev env file and use a **separate bot token and test guild**:
 
 ```sh
-cp .env.example .env.dev
-# Edit .env.dev: test token, test guild/channel/role IDs, then add:
+python scripts/setup_env.py --output .env.dev
+# Then uncomment/add these in .env.dev:
 #   DEV_MODE=true
 #   EULER_DB_PATH=db/dev.sql
 EULER_ENV_FILE=.env.dev python -m main
@@ -165,7 +167,9 @@ Do not run the dev instance with the same token as the production bot at the sam
 
 ```
 main.py                    entry point: wires everything together, syncs commands, starts the bot
-.env.example               template for local configuration; copy to .env
+.env.example               template for local configuration
+scripts/
+  setup_env.py             interactive .env generator
 euler/
   __init__.py
   bot_instance.py          the single shared Discord client and command tree
@@ -201,7 +205,7 @@ Each feature file registers its commands when imported; `main.py` imports them.
 ## Deploying on a Raspberry Pi
 
 1. Copy the project to the Pi, create a venv, and install `requirements.txt`.
-2. Create `.env` on the Pi with `TIMEZONE=America/Chicago`.
+2. Run `python scripts/setup_env.py` on the Pi to create `.env`.
 3. Keep the host clock synced with NTP (`timedatectl` / `systemd-timesyncd`), then verify with `/clock`.
 4. Edit `User` and the paths in `euler.service`, then:
 
